@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Sandbox: Content Safety Triage Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-env: #080A0F;
+            --bg-surface: #0F131A;
+            --bg-node: #161B24;
+            --border: #242C3D;
+            --text-main: #F1F5F9;
+            --text-muted: #64748B;
+            --accent: #38BDF8;
+            --accent-danger: #EF4444;
+            --accent-success: #10B981;
+            --font-sans: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg-env);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        .framework-shell {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 2rem;
+        }
+
+        /* --- SIDEBAR DOCUMENTATION --- */
+        .panel-docs {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .panel-title {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -0.5px; }
+        p { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+
+        .hotkey-legend {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .legend-row {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+        .legend-row:last-child { margin-bottom: 0; }
+        .kbd-key {
+            background: var(--bg-node);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.1rem 0.4rem;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        /* --- TRIAGE WORKSPACE --- */
+        .panel-runtime {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .telemetry-bar {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+
+        .triage-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2.5rem;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2.5rem;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        /* Sensory Protection Shield Mechanics */
+        .media-viewport {
+            width: 320px;
+            height: 320px;
+            background: var(--bg-env);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .media-payload {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            transition: filter 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            filter: blur(25px) grayscale(100%); /* Initializing safety buffer */
+        }
+
+        /* Hover event reveal initialization */
+        .media-viewport:hover .media-payload {
+            filter: blur(0px) grayscale(0%);
+        }
+
+        .blur-indicator {
+            position: absolute;
+            background: rgba(8, 10, 15, 0.85);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .media-viewport:hover .blur-indicator { opacity: 0; }
+
+        .content-details {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            justify-content: center;
+        }
+
+        .meta-tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent-danger);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .asset-id {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .payload-text {
+            font-size: 1.15rem;
+            color: var(--text-main);
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+
+        /* Manual Action Control Interface */
+        .action-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-triage {
+            flex: 1;
+            background: var(--bg-node);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn-triage.approve:hover { border-color: var(--accent-success); background: rgba(16, 185, 129, 0.05); }
+        .btn-triage.escalate:hover { border-color: var(--accent-danger); background: rgba(239, 110, 110, 0.05); }
+
+        .btn-hint { font-size: 0.7rem; color: var(--text-muted); border: 1px solid var(--border); padding: 0.1rem 0.3rem; border-radius: 3px; }
+
+        @media (max-width: 900px) {
+            .framework-shell { grid-template-columns: 1fr; }
+            .triage-card { grid-template-columns: 1fr; justify-content: center; padding: 1.5rem; }
+            .media-viewport { margin: 0 auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="framework-shell">
+        
+        <aside class="panel-docs">
+            <div class="panel-title">Ergonomic Design</div>
+            <h1>Safety Console</h1>
+            <p>A keyboard-driven framework designed to minimise physical motor travel distance while preserving operator cognitive wellness using automated sensory buffers.</p>
+            
+            <div class="hotkey-legend">
+                <div class="legend-row"><span>Approve Asset</span><span class="kbd-key">W</span></div>
+                <div class="legend-row"><span>Escalate Flag</span><span class="kbd-key">E</span></div>
+                <div class="legend-row"><span>Panic Blackout</span><span class="kbd-key">SPACE</span></div>
+            </div>
+
+            <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);">
+                * Hover over image boundaries to temporarily bypass layout filter.
+            </div>
+        </aside>
+
+        <section class="panel-runtime" id="workspace-wrapper">
+            
+            <div class="telemetry-bar">
+                <div>WORKSPACE STATUS: OPERATIONAL</div>
+                <div>AVG TTD: <span id="telemetry-avg" style="color: var(--accent); font-family: var(--font-mono); font-weight: bold;">0.00s</span></div>
+            </div>
+
+            <div class="triage-card" id="active-card-container">
+                <div class="media-viewport">
+                    <div class="blur-indicator">MUTED // HOVER TO REVIEW</div>
+                    <div class="media-payload" id="media-canvas">
+                        <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="100" height="100" rx="6" fill="#1E2432"/>
+                            <circle cx="50" cy="50" r="30" stroke="#EF4444" stroke-width="6" stroke-dasharray="10 5"/>
+                            <path d="M35 35L65 65" stroke="#EF4444" stroke-width="6"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="content-details">
+                    <div class="meta-tag" id="asset-type">Anomaly Flag // Network Threat</div>
+                    <div class="asset-id" id="asset-id">ID: asset_payload_8842_hx</div>
+                    <div class="payload-text" id="asset-text">"Inbound string payload sequences execute external buffer overflow parameters against cluster node registers."</div>
+                    
+                    <div class="action-row">
+                        <button class="btn-triage approve" onclick="processDecision('APPROVE')">
+                            <span>Approve Clean</span><span class="btn-hint">W</span>
+                        </button>
+                        <button class="btn-triage escalate" onclick="processDecision('ESCALATE')">
+                            <span>Escalate Threat</span><span class="btn-hint">E</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Mock payload arrays representing dynamic input channels
+        const assetQueue = [
+            { id: "asset_payload_9104_kf", type: "Anomaly Flag // Script Injection", text: "Persistent cross-site scripting strings embedded inside primary user registration configuration paths.", color: "#EF4444" },
+            { id: "asset_payload_3319_om", type: "Telemetry Audit // Leak Risk", text: "System memory dump vectors logging raw configuration credentials inside standard output buffers.", color: "#F59E0B" },
+            { id: "asset_payload_7721_xv", type: "Anomaly Flag // Execution Threat", text: "Automated macro commands attempting binary elevation configurations via client terminal portals.", color: "#EF4444" }
+        ];
+
+        let currentQueueIndex = 0;
+        let decisionTimes = [];
+        let itemLoadTimestamp = Date.now();
+
+        // Core Decision Pipeline Engine
+        function processDecision(actionType) {
+            const decisionLatency = (Date.now() - itemLoadTimestamp) / 1000;
+            decisionTimes.push(decisionLatency);
+            
+            // Calculate and re-render dynamic operational latency metrics
+            const totalSum = decisionTimes.reduce((acc, val) => acc + val, 0);
+            const averageTTD = (totalSum / decisionTimes.length).toFixed(2);
+            document.getElementById('telemetry-avg').innerText = `${averageTTD}s`;
+
+            // Advance the layout array state smoothly
+            currentQueueIndex++;
+            if (currentQueueIndex >= assetQueue.length) {
+                // Circular queue cycling loop for demo purposes
+                currentQueueIndex = 0;
+            }
+            
+            renderNextAsset();
+        }
+
+        function renderNextAsset() {
+            const currentAsset = assetQueue[currentQueueIndex];
+            
+            // Inject structural variables cleanly into layout nodes
+            document.getElementById('asset-id').innerText = `ID: ${currentAsset.id}`;
+            document.getElementById('asset-type').innerText = currentAsset.type;
+            document.getElementById('asset-text').innerText = `"${currentAsset.text}"`;
+            
+            // Modify graphic parameters dynamically
+            const svgPathColor = currentAsset.color;
+            document.getElementById('media-canvas').innerHTML = `
+                <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100" height="100" rx="6" fill="#1E2432"/>
+                    <circle cx="50" cy="50" r="30" stroke="${svgPathColor}" stroke-width="6" stroke-dasharray="8 4"/>
+                    <path d="M30 50H70" stroke="${svgPathColor}" stroke-width="6"/>
+                </svg>
+            `;
+
+            // Reset interaction latency frame stopwatch
+            itemLoadTimestamp = Date.now();
+        }
+
+        // Global Keyboard Event Capturing Router
+        window.addEventListener('keydown', function(event) {
+            const pressedKey = event.key.toLowerCase();
+            
+            if (pressedKey === 'w') {
+                processDecision('APPROVE');
+            } else if (pressedKey === 'e') {
+                processDecision('ESCALATE');
+            } else if (event.keyCode === 32) { // Spacebar hardware panic killswitch
+                event.preventDefault();
+                const wrapper = document.getElementById('workspace-wrapper');
+                wrapper.innerHTML = `
+                    <div style="background: var(--bg-surface); border: 1px solid var(--accent-danger); border-radius:8px; padding:3rem; text-align:center; font-family:var(--font-mono);">
+                        <h2 style="color:var(--accent-danger); margin-bottom:1rem;">EMERGENCY SECURE DISCONNECT ACTIVE</h2>
+                        <p style="color:var(--text-muted); font-size:0.9rem;">Workspace blackout initialized by hardware intercept command. Reflow locked.</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
